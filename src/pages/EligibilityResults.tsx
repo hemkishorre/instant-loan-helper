@@ -1,9 +1,10 @@
 
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/components/ui/use-toast';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -14,7 +15,9 @@ import {
   Calendar, 
   CreditCard, 
   Shield, 
-  Badge as BadgeIcon 
+  Badge as BadgeIcon,
+  AlertTriangle,
+  XCircle
 } from 'lucide-react';
 
 interface LoanOffer {
@@ -28,12 +31,62 @@ interface LoanOffer {
   features: string[];
 }
 
-const EligibilityResults = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
+// Map eligibility score to offers
+function getOffersBasedOnScore(score: number | null): LoanOffer[] {
+  // Default offers for low or null scores
+  if (score === null || score < 40) {
+    return [
+      {
+        id: 1,
+        type: 'Personal Loan',
+        amount: '₹50,000',
+        interestRate: '18.99%',
+        tenure: '12 months',
+        emi: '₹4,620/month',
+        processingFee: '2.5%',
+        features: ['Quick disbursal', 'Minimal documentation', 'No collateral required']
+      }
+    ];
+  }
   
-  // Simulated loan offers based on eligibility
-  const [loanOffers] = useState<LoanOffer[]>([
+  // High score (70+)
+  if (score >= 70) {
+    return [
+      {
+        id: 1,
+        type: 'Premium Personal Loan',
+        amount: '₹5,00,000',
+        interestRate: '10.99%',
+        tenure: '60 months',
+        emi: '₹10,850/month',
+        processingFee: '1%',
+        features: ['Exclusive rate', 'Flexible repayment options', 'Pre-approved top-ups', 'Insurance benefits']
+      },
+      {
+        id: 2,
+        type: 'Home Loan',
+        amount: '₹30,00,000',
+        interestRate: '7.5%',
+        tenure: '20 years',
+        emi: '₹24,110/month',
+        processingFee: '0.5%',
+        features: ['Lowest interest rates', 'Up to 85% financing', 'Property insurance included', '25-year tenure option']
+      },
+      {
+        id: 3,
+        type: 'Business Loan',
+        amount: '₹10,00,000',
+        interestRate: '11.5%',
+        tenure: '48 months',
+        emi: '₹26,020/month',
+        processingFee: '1.5%',
+        features: ['Minimal business documentation', 'GST benefits', 'Tax advantages', 'Flexible usage']
+      }
+    ];
+  }
+  
+  // Medium score (40-70)
+  return [
     {
       id: 1,
       type: 'Personal Loan',
@@ -53,18 +106,68 @@ const EligibilityResults = () => {
       emi: '₹9,630/month',
       processingFee: '2%',
       features: ['Higher loan amount', 'Longer repayment period', 'Option to top-up after 12 months']
-    },
-    {
-      id: 3,
-      type: 'Business Loan',
-      amount: '₹5,00,000',
-      interestRate: '16.99%',
-      tenure: '60 months',
-      emi: '₹12,380/month',
-      processingFee: '2.5%',
-      features: ['Ideal for business expansion', 'Tax benefits available', 'No security required']
     }
-  ]);
+  ];
+}
+
+// Helper function to get status color based on score
+function getScoreColorClass(score: number | null): string {
+  if (score === null) return 'text-gray-500';
+  if (score >= 70) return 'text-green-600';
+  if (score >= 40) return 'text-yellow-500';
+  return 'text-red-500';
+}
+
+// Helper function to get status text based on score
+function getScoreStatusText(score: number | null): string {
+  if (score === null) return 'Not Available';
+  if (score >= 70) return 'Excellent';
+  if (score >= 40) return 'Good';
+  return 'Limited';
+}
+
+// Helper function to get status icon based on score
+function getScoreStatusIcon(score: number | null) {
+  if (score === null) return <BadgeIcon className="h-8 w-8 mx-auto text-gray-400" />;
+  if (score >= 70) return <CheckCircle2 className="h-8 w-8 mx-auto text-green-500" />;
+  if (score >= 40) return <AlertTriangle className="h-8 w-8 mx-auto text-yellow-500" />;
+  return <XCircle className="h-8 w-8 mx-auto text-red-500" />;
+}
+
+const EligibilityResults = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
+  
+  // Get eligibility score from location state
+  const [eligibilityScore, setEligibilityScore] = useState<number | null>(
+    location.state?.eligibilityScore || null
+  );
+  
+  // Get document data from location state
+  const [documents] = useState(location.state?.documents || {});
+  
+  // Generate loan offers based on eligibility score
+  const [loanOffers, setLoanOffers] = useState<LoanOffer[]>(
+    getOffersBasedOnScore(eligibilityScore)
+  );
+  
+  useEffect(() => {
+    // If we don't have an eligibility score, the user may have refreshed the page
+    // In a real app, we'd fetch this from an API or redirect them back to the eligibility page
+    if (eligibilityScore === null && !location.state) {
+      toast({
+        title: "Session expired",
+        description: "Your eligibility session has expired. Please complete the eligibility check again.",
+        variant: "destructive",
+      });
+      
+      // Wait a moment before redirecting
+      setTimeout(() => {
+        navigate('/eligibility');
+      }, 2000);
+    }
+  }, [eligibilityScore, location.state, navigate, toast]);
 
   const handleApplyNow = (offerId: number) => {
     // Simulate selecting a loan offer and proceeding to application
@@ -86,23 +189,52 @@ const EligibilityResults = () => {
         <div className="max-w-4xl mx-auto px-6">
           <div className="text-center mb-12 animate-fadeIn">
             <div className="inline-flex items-center justify-center p-3 bg-green-100 rounded-full mb-6">
-              <CheckCircle2 className="h-8 w-8 text-green-600" />
+              {eligibilityScore !== null && eligibilityScore >= 40 ? (
+                <CheckCircle2 className="h-8 w-8 text-green-600" />
+              ) : (
+                <AlertTriangle className="h-8 w-8 text-yellow-500" />
+              )}
             </div>
             <h1 className="text-3xl font-bold text-loan-darkBlue mb-4">
-              Congratulations! You're Pre-Approved
+              {eligibilityScore !== null && eligibilityScore >= 40
+                ? "Congratulations! You're Pre-Approved"
+                : "Thank You for Your Application"}
             </h1>
             <p className="text-lg text-gray-700 max-w-2xl mx-auto">
-              Based on your submitted documents, you're eligible for the following loan offers.
-              Choose the one that best suits your needs.
+              {eligibilityScore !== null && eligibilityScore >= 40
+                ? "Based on your submitted documents, you're eligible for the following loan offers. Choose the one that best suits your needs."
+                : "Based on your submitted documents, we've assessed your current eligibility. See below for available options."}
             </p>
+            
+            {eligibilityScore !== null && (
+              <div className="mt-6">
+                <div className="inline-block">
+                  <h3 className="text-xl font-bold mb-2">Your Eligibility Score</h3>
+                  <div className="bg-white rounded-full h-8 w-64 border overflow-hidden">
+                    <div 
+                      className={`h-full ${
+                        eligibilityScore >= 70 ? 'bg-green-500' : 
+                        eligibilityScore >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${eligibilityScore}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span>0</span>
+                    <span className="font-medium">{eligibilityScore}/100</span>
+                    <span>100</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <div className="bg-white rounded-lg shadow p-6 text-center animate-fadeIn" style={{ animationDelay: '0.1s' }}>
-              <div className="text-loan-blue mb-2">
-                <BadgeIcon className="h-8 w-8 mx-auto" />
+              <div className={getScoreColorClass(eligibilityScore) + " mb-2"}>
+                {getScoreStatusIcon(eligibilityScore)}
               </div>
-              <h3 className="text-xl font-bold text-loan-darkBlue mb-1">Very Good</h3>
+              <h3 className="text-xl font-bold text-loan-darkBlue mb-1">{getScoreStatusText(eligibilityScore)}</h3>
               <p className="text-gray-600">Credit Profile</p>
             </div>
             
@@ -110,7 +242,13 @@ const EligibilityResults = () => {
               <div className="text-loan-blue mb-2">
                 <CreditCard className="h-8 w-8 mx-auto" />
               </div>
-              <h3 className="text-xl font-bold text-loan-darkBlue mb-1">₹5,00,000</h3>
+              <h3 className="text-xl font-bold text-loan-darkBlue mb-1">
+                {eligibilityScore !== null && eligibilityScore >= 70 
+                  ? "₹30,00,000" 
+                  : eligibilityScore !== null && eligibilityScore >= 40 
+                    ? "₹3,50,000" 
+                    : "₹50,000"}
+              </h3>
               <p className="text-gray-600">Max Eligible Amount</p>
             </div>
             
@@ -123,7 +261,11 @@ const EligibilityResults = () => {
             </div>
           </div>
           
-          <h2 className="text-2xl font-bold text-loan-darkBlue mb-6">Your Pre-Approved Loan Offers</h2>
+          <h2 className="text-2xl font-bold text-loan-darkBlue mb-6">
+            {eligibilityScore !== null && eligibilityScore >= 40
+              ? "Your Pre-Approved Loan Offers"
+              : "Available Loan Options"}
+          </h2>
           
           <div className="space-y-6">
             {loanOffers.map((offer, index) => (
@@ -131,7 +273,9 @@ const EligibilityResults = () => {
                 <CardHeader className="bg-loan-blue text-white py-4">
                   <CardTitle className="flex items-center justify-between">
                     <span>{offer.type}</span>
-                    <Badge className="bg-white text-loan-blue hover:bg-gray-100">Pre-Approved</Badge>
+                    <Badge className="bg-white text-loan-blue hover:bg-gray-100">
+                      {eligibilityScore !== null && eligibilityScore >= 40 ? "Pre-Approved" : "Available"}
+                    </Badge>
                   </CardTitle>
                 </CardHeader>
                 

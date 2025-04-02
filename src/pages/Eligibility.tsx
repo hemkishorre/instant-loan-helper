@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { 
@@ -12,8 +13,11 @@ import {
   Upload, 
   Check, 
   AlertCircle, 
-  Trash2 
+  Trash2,
+  Eye
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { analyzeDocument } from '@/services/documentService';
 
 type DocumentType = 'aadhar' | 'pan' | 'salarySlip';
 
@@ -25,11 +29,14 @@ interface Document {
   processing: boolean;
   processed: boolean;
   error: string | null;
+  analysisResult?: string;
+  eligibilityScore?: number | null;
+  eligibilityFeedback?: string | null;
 }
 
 const Eligibility = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { toast: uiToast } = useToast();
   
   const [documents, setDocuments] = useState<Record<DocumentType, Document>>({
     aadhar: {
@@ -63,6 +70,7 @@ const Eligibility = () => {
   
   const [processing, setProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
+  const [overallEligibilityScore, setOverallEligibilityScore] = useState<number | null>(null);
   
   const documentLabels: Record<DocumentType, string> = {
     aadhar: 'Aadhar Card',
@@ -72,12 +80,12 @@ const Eligibility = () => {
   
   const allDocumentsUploaded = Object.values(documents).every(doc => doc.uploaded);
   
-  const handleFileChange = (type: DocumentType, file: File | null) => {
+  const handleFileChange = async (type: DocumentType, file: File | null) => {
     if (!file) return;
     
     // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast({
+      uiToast({
         title: "File too large",
         description: "Maximum file size is 5MB.",
         variant: "destructive",
@@ -97,15 +105,14 @@ const Eligibility = () => {
         uploaded: true,
         processing: false,
         processed: false,
-        error: null
+        error: null,
+        analysisResult: undefined,
+        eligibilityScore: undefined,
+        eligibilityFeedback: undefined
       }
     }));
     
-    toast({
-      title: "Document uploaded",
-      description: `${documentLabels[type]} has been uploaded successfully.`,
-      variant: "default",
-    });
+    toast.success(`${documentLabels[type]} has been uploaded successfully.`);
   };
   
   const handleDragOver = (e: React.DragEvent) => {
@@ -129,64 +136,132 @@ const Eligibility = () => {
         uploaded: false,
         processing: false,
         processed: false,
-        error: null
+        error: null,
+        analysisResult: undefined,
+        eligibilityScore: undefined,
+        eligibilityFeedback: undefined
       }
     }));
     
-    toast({
-      title: "Document removed",
-      description: `${documentLabels[type]} has been removed.`,
-      variant: "default",
-    });
+    toast.info(`${documentLabels[type]} has been removed.`);
   };
   
-  const simulateProcessing = () => {
+  const processDocuments = async () => {
     setProcessing(true);
     setProcessingProgress(0);
     
-    // Simulating documents OCR processing one by one
+    // Process each document sequentially
     const documentTypes: DocumentType[] = ['aadhar', 'pan', 'salarySlip'];
     let currentDocIndex = 0;
+    let totalEligibilityScore = 0;
+    let documentsWithScore = 0;
     
-    const processNextDocument = () => {
+    const processNextDocument = async () => {
       if (currentDocIndex >= documentTypes.length) {
-        // All documents processed, navigate to results
+        // All documents processed, calculate overall eligibility
+        const finalScore = documentsWithScore > 0 
+          ? Math.round(totalEligibilityScore / documentsWithScore) 
+          : null;
+        
+        setOverallEligibilityScore(finalScore);
+        
+        // Navigate to results with a small delay
         setTimeout(() => {
-          navigate('/eligibility-results');
+          navigate('/eligibility-results', { 
+            state: { 
+              eligibilityScore: finalScore,
+              documents: documents 
+            } 
+          });
         }, 1000);
         return;
       }
       
       const currentType = documentTypes[currentDocIndex];
+      const currentDoc = documents[currentType];
       
-      // Mark current document as processing
+      if (!currentDoc.file || !currentDoc.uploaded) {
+        // Skip if no file uploaded
+        currentDocIndex++;
+        setProcessingProgress(Math.round((currentDocIndex / documentTypes.length) * 100));
+        processNextDocument();
+        return;
+      }
+      
+      // Mark document as processing
       setDocuments(prev => ({
         ...prev,
         [currentType]: {
           ...prev[currentType],
           processing: true,
-          processed: false
+          processed: false,
+          error: null
         }
       }));
       
-      // Simulate OCR processing
-      setTimeout(() => {
-        // Mark document as processed
+      try {
+        // Call our document analysis service
+        const result = await analyzeDocument(currentType, currentDoc.file);
+        
+        if (result.error) {
+          // Handle error
+          setDocuments(prev => ({
+            ...prev,
+            [currentType]: {
+              ...prev[currentType],
+              processing: false,
+              processed: false,
+              error: result.error
+            }
+          }));
+          
+          toast.error(`Error processing ${documentLabels[currentType]}: ${result.error}`);
+        } else {
+          // Update document with analysis results
+          setDocuments(prev => ({
+            ...prev,
+            [currentType]: {
+              ...prev[currentType],
+              processing: false,
+              processed: true,
+              error: null,
+              analysisResult: result.analysisResult,
+              eligibilityScore: result.eligibilityScore,
+              eligibilityFeedback: result.eligibilityFeedback
+            }
+          }));
+          
+          // Add to total score if available
+          if (result.eligibilityScore !== null) {
+            totalEligibilityScore += result.eligibilityScore;
+            documentsWithScore++;
+          }
+          
+          toast.success(`${documentLabels[currentType]} processed successfully.`);
+        }
+      } catch (error) {
+        // Handle unexpected error
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        
         setDocuments(prev => ({
           ...prev,
           [currentType]: {
             ...prev[currentType],
             processing: false,
-            processed: true
+            processed: false,
+            error: errorMessage
           }
         }));
         
-        currentDocIndex++;
-        setProcessingProgress(Math.round((currentDocIndex / documentTypes.length) * 100));
-        
-        // Process next document
-        processNextDocument();
-      }, 1500);
+        toast.error(`Error processing ${documentLabels[currentType]}: ${errorMessage}`);
+      }
+      
+      // Move to next document
+      currentDocIndex++;
+      setProcessingProgress(Math.round((currentDocIndex / documentTypes.length) * 100));
+      
+      // Process next document
+      processNextDocument();
     };
     
     // Start processing documents
@@ -222,18 +297,10 @@ const Eligibility = () => {
                         className="document-upload-area p-6 flex flex-col items-center justify-center h-64 cursor-pointer"
                         onDragOver={handleDragOver}
                         onDrop={(e) => handleDrop(e, type)}
-                        onClick={() => document.file === null && document.preview === null && document.uploaded === false && document.processed === false && document.processing === false && document.error === null ? 
-                          document.file || document.processing ? 
-                            undefined : 
-                            document.preview ? 
-                              document.preview : 
-                              document.uploaded === false && document.processed === false && document.processing === false && document.error === null ?
-                                document.file || document.processing ?
-                                  undefined :
-                                  document.preview ?
-                                    document.preview :
-                                    document.uploaded === false && document.processed === false && document.processing === false && document.error === null ? document.file || document.processing ? undefined : document.preview ? document.preview : document.uploaded === false && document.processed === false && document.processing === false && document.error === null ? undefined : undefined : undefined : undefined : undefined
-                        }
+                        onClick={() => {
+                          const fileInput = document.getElementById(`file-${type}`);
+                          if (fileInput) fileInput.click();
+                        }}
                       >
                         <div className="mb-4 bg-loan-lightGray p-3 rounded-full">
                           <Upload className="h-8 w-8 text-loan-blue" />
@@ -282,17 +349,53 @@ const Eligibility = () => {
                           <p className="text-sm mb-3 text-center">
                             {document.processing ? 'Processing...' : document.processed ? 'Processed successfully' : 'Uploaded successfully'}
                           </p>
-                          {!document.processing && !document.processed && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDeleteDocument(type)}
-                              className="bg-red-500 hover:bg-red-600"
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Remove
-                            </Button>
-                          )}
+                          
+                          <div className="flex space-x-2">
+                            {document.processed && document.analysisResult && (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button size="sm" variant="outline" className="bg-blue-500 hover:bg-blue-600 text-white border-0">
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    View Analysis
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl">
+                                  <DialogHeader>
+                                    <DialogTitle>Document Analysis - {documentLabels[type]}</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="mt-4 max-h-[60vh] overflow-y-auto">
+                                    <div className="whitespace-pre-line bg-gray-50 p-4 rounded-md text-sm">
+                                      {document.analysisResult}
+                                    </div>
+                                    
+                                    {document.eligibilityScore !== null && document.eligibilityScore !== undefined && (
+                                      <div className="mt-4 border-t pt-4">
+                                        <h4 className="font-semibold mb-2">Eligibility Assessment</h4>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-gray-700 mr-2">Score:</span>
+                                          <span className="font-bold text-loan-blue">{document.eligibilityScore}/100</span>
+                                        </div>
+                                        <Progress value={document.eligibilityScore} className="h-2 mb-2" />
+                                        <p className="text-sm text-gray-600">{document.eligibilityFeedback}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            )}
+                            
+                            {!document.processing && !document.processed && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteDocument(type)}
+                                className="bg-red-500 hover:bg-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Remove
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -319,7 +422,7 @@ const Eligibility = () => {
               <Button
                 className="bg-loan-blue hover:bg-loan-darkBlue px-8 py-6 text-lg"
                 disabled={!allDocumentsUploaded}
-                onClick={simulateProcessing}
+                onClick={processDocuments}
               >
                 Check Eligibility
               </Button>
