@@ -6,68 +6,44 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { toast } from 'sonner';
+
+const loginSchema = z.object({
+  email: z.string().email('Please enter a valid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  rememberMe: z.boolean().optional()
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const { signIn } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    rememberMe: false
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      rememberMe: false
+    }
   });
-  
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value
-    });
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors({
-        ...errors,
-        [name]: ''
-      });
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (validateForm()) {
-      // Simulate login
-      setTimeout(() => {
-        toast({
-          title: "Login successful!",
-          description: "Welcome back to FastLoan.",
-          variant: "default",
-        });
-        navigate('/dashboard');
-      }, 1500);
+  const onSubmit = async (data: LoginFormValues) => {
+    setIsLoading(true);
+    try {
+      await signIn(data.email, data.password);
+    } catch (error) {
+      console.error('Login error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -86,70 +62,84 @@ const Login = () => {
             </CardHeader>
             
             <CardContent>
-              <form onSubmit={handleSubmit}>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="Enter your email address"
-                      className={errors.email ? "border-loan-red" : ""}
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-loan-red">{errors.email}</p>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="Enter your email address" 
+                            type="email"
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
+                  />
                   
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="password">Password</Label>
-                      <Link to="/forgot-password" className="text-sm text-loan-blue hover:underline">
-                        Forgot password?
-                      </Link>
-                    </div>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      placeholder="Enter your password"
-                      className={errors.password ? "border-loan-red" : ""}
-                    />
-                    {errors.password && (
-                      <p className="text-sm text-loan-red">{errors.password}</p>
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>Password</FormLabel>
+                          <Link to="/forgot-password" className="text-sm text-loan-blue hover:underline">
+                            Forgot password?
+                          </Link>
+                        </div>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="Enter your password" 
+                            type="password"
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
+                  />
                   
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="rememberMe" 
-                      name="rememberMe"
-                      checked={formData.rememberMe}
-                      onCheckedChange={(checked) => 
-                        setFormData({
-                          ...formData,
-                          rememberMe: checked as boolean
-                        })
-                      }
-                    />
-                    <label
-                      htmlFor="rememberMe"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      Remember me for 30 days
-                    </label>
-                  </div>
-                </div>
-                
-                <Button type="submit" className="w-full mt-6 bg-loan-blue hover:bg-loan-darkBlue">
-                  Log In
-                </Button>
-              </form>
+                  <FormField
+                    control={form.control}
+                    name="rememberMe"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2">
+                        <FormControl>
+                          <Checkbox 
+                            checked={field.value} 
+                            onCheckedChange={field.onChange}
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <FormLabel className="text-sm font-medium leading-none cursor-pointer">
+                          Remember me for 30 days
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full mt-6 bg-loan-blue hover:bg-loan-darkBlue"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center justify-center">
+                        <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        <span>Logging in...</span>
+                      </div>
+                    ) : 'Log In'}
+                  </Button>
+                </form>
+              </Form>
             </CardContent>
             
             <CardFooter className="flex justify-center">

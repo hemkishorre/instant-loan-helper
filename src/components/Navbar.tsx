@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   Menu, 
@@ -8,14 +8,19 @@ import {
   User, 
   LogOut 
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   
-  // Simulating user authentication check
-  const toggleLogin = () => {
-    setIsLoggedIn(!isLoggedIn);
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   return (
@@ -39,7 +44,7 @@ const Navbar = () => {
           <Link to="/loan-types" className="text-gray-700 hover:text-loan-blue transition-colors">
             Loan Types
           </Link>
-          {isLoggedIn ? (
+          {user ? (
             <>
               <Link to="/dashboard" className="text-gray-700 hover:text-loan-blue transition-colors">
                 Dashboard
@@ -47,7 +52,7 @@ const Navbar = () => {
               <Button 
                 variant="ghost" 
                 className="flex items-center space-x-1 text-loan-gray"
-                onClick={toggleLogin}
+                onClick={handleLogout}
               >
                 <LogOut size={16} />
                 <span>Logout</span>
@@ -107,7 +112,7 @@ const Navbar = () => {
             >
               Loan Types
             </Link>
-            {isLoggedIn ? (
+            {user ? (
               <>
                 <Link 
                   to="/dashboard" 
@@ -120,7 +125,7 @@ const Navbar = () => {
                   variant="ghost" 
                   className="flex items-center justify-start space-x-1 text-loan-gray"
                   onClick={() => {
-                    toggleLogin();
+                    handleLogout();
                     setIsMenuOpen(false);
                   }}
                 >

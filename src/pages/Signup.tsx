@@ -1,96 +1,61 @@
 
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/components/ui/use-toast';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useAuth } from '@/contexts/AuthContext';
+
+const signupSchema = z.object({
+  fullName: z.string().min(2, 'Full name is required'),
+  email: z.string().email('Please enter a valid email'),
+  phone: z.string()
+    .min(10, 'Phone number must be at least 10 digits')
+    .regex(/^\d+$/, 'Phone number must contain only digits'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string().min(1, 'Confirm your password'),
+  agreeTerms: z.boolean().refine(val => val === true, {
+    message: 'You must agree to the terms and conditions'
+  })
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword']
+});
+
+type SignupFormValues = z.infer<typeof signupSchema>;
 
 const Signup = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const { signUp } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-    agreeTerms: false
+  const form = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      fullName: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
+      agreeTerms: false
+    }
   });
-  
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value
-    });
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors({
-        ...errors,
-        [name]: ''
-      });
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
-    }
-    
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^\d{10}$/.test(formData.phone)) {
-      newErrors.phone = 'Phone number must be 10 digits';
-    }
-    
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    }
-    
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-    
-    if (!formData.agreeTerms) {
-      newErrors.agreeTerms = 'You must agree to the terms and conditions';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (validateForm()) {
-      // Simulate account creation
-      setTimeout(() => {
-        toast({
-          title: "Account created successfully!",
-          description: "You can now login to your account.",
-          variant: "default",
-        });
-        navigate('/login');
-      }, 1500);
+  const onSubmit = async (data: SignupFormValues) => {
+    setIsLoading(true);
+    try {
+      await signUp(data.email, data.password, data.fullName, data.phone);
+      form.reset();
+    } catch (error) {
+      console.error('Signup error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -109,123 +74,144 @@ const Signup = () => {
             </CardHeader>
             
             <CardContent>
-              <form onSubmit={handleSubmit}>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleChange}
-                      placeholder="Enter your full name"
-                      className={errors.fullName ? "border-loan-red" : ""}
-                    />
-                    {errors.fullName && (
-                      <p className="text-sm text-loan-red">{errors.fullName}</p>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="fullName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="Enter your full name" 
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
+                  />
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="Enter your email address"
-                      className={errors.email ? "border-loan-red" : ""}
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-loan-red">{errors.email}</p>
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="Enter your email address" 
+                            type="email"
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
+                  />
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      placeholder="Enter your 10-digit phone number"
-                      className={errors.phone ? "border-loan-red" : ""}
-                    />
-                    {errors.phone && (
-                      <p className="text-sm text-loan-red">{errors.phone}</p>
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="Enter your 10-digit phone number" 
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
+                  />
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      placeholder="Create a password"
-                      className={errors.password ? "border-loan-red" : ""}
-                    />
-                    {errors.password && (
-                      <p className="text-sm text-loan-red">{errors.password}</p>
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="Create a password" 
+                            type="password"
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
+                  />
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <Input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      placeholder="Confirm your password"
-                      className={errors.confirmPassword ? "border-loan-red" : ""}
-                    />
-                    {errors.confirmPassword && (
-                      <p className="text-sm text-loan-red">{errors.confirmPassword}</p>
+                  <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="Confirm your password" 
+                            type="password"
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
+                  />
                   
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="agreeTerms" 
-                        name="agreeTerms"
-                        checked={formData.agreeTerms}
-                        onCheckedChange={(checked) => 
-                          setFormData({
-                            ...formData,
-                            agreeTerms: checked as boolean
-                          })
-                        }
-                      />
-                      <label
-                        htmlFor="agreeTerms"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        I agree to the{" "}
-                        <Link to="/terms-of-service" className="text-loan-blue hover:underline">
-                          terms of service
-                        </Link>
-                        {" "}and{" "}
-                        <Link to="/privacy-policy" className="text-loan-blue hover:underline">
-                          privacy policy
-                        </Link>
-                      </label>
-                    </div>
-                    {errors.agreeTerms && (
-                      <p className="text-sm text-loan-red">{errors.agreeTerms}</p>
+                  <FormField
+                    control={form.control}
+                    name="agreeTerms"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox 
+                            checked={field.value} 
+                            onCheckedChange={field.onChange}
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-medium leading-none">
+                            I agree to the{" "}
+                            <Link to="/terms-of-service" className="text-loan-blue hover:underline">
+                              terms of service
+                            </Link>
+                            {" "}and{" "}
+                            <Link to="/privacy-policy" className="text-loan-blue hover:underline">
+                              privacy policy
+                            </Link>
+                          </FormLabel>
+                          <FormMessage />
+                        </div>
+                      </FormItem>
                     )}
-                  </div>
-                </div>
-                
-                <Button type="submit" className="w-full mt-6 bg-loan-blue hover:bg-loan-darkBlue">
-                  Create Account
-                </Button>
-              </form>
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full mt-6 bg-loan-blue hover:bg-loan-darkBlue"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center justify-center">
+                        <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        <span>Creating Account...</span>
+                      </div>
+                    ) : 'Create Account'}
+                  </Button>
+                </form>
+              </Form>
             </CardContent>
             
             <CardFooter className="flex justify-center">
