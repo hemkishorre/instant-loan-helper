@@ -1,166 +1,153 @@
 
-import { useState } from 'react';
+import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { toast } from 'sonner';
-import { FileText, Upload, Check, Trash2, Eye } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Progress } from '@/components/ui/progress';
-
-type DocumentType = 'aadhar' | 'pan' | 'salarySlip';
+import { FilePlus2, FileText, X, Check, AlertTriangle, Loader2 } from 'lucide-react';
 
 export interface Document {
-  type: DocumentType;
+  type: string;
   file: File | null;
   preview: string | null;
   uploaded: boolean;
   processing: boolean;
   processed: boolean;
   error: string | null;
-  analysisResult?: string;
-  eligibilityScore?: number | null;
-  eligibilityFeedback?: string | null;
+  analysisResult?: any;
+  eligibilityScore?: number;
+  eligibilityFeedback?: string;
 }
 
 interface DocumentUploaderProps {
-  type: DocumentType;
-  label: string;
   document: Document;
-  onFileChange: (type: DocumentType, file: File | null) => void;
-  onDeleteDocument: (type: DocumentType) => void;
+  documentLabel: string;
+  onFileChange: (file: File | null) => void;
+  onDelete: () => void;
 }
 
-const DocumentUploader = ({
-  type,
-  label,
+const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   document,
+  documentLabel,
   onFileChange,
-  onDeleteDocument
-}: DocumentUploaderProps) => {
-  
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-  
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      onFileChange(type, e.dataTransfer.files[0]);
+  onDelete
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
-  
-  const triggerFileInput = () => {
-    // Use a ref to get the file input element instead of document.getElementById
-    const fileInput = document.querySelector(`#file-${type}`) as HTMLInputElement;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    onFileChange(file);
+    
+    // Reset the file input so the same file can be selected again if needed
+    if (e.target.value) {
+      e.target.value = '';
+    }
+  };
+
+  const handleDropAreaClick = () => {
+    // Find the file input element in the DOM
+    const fileInput = document.getElementById(`file-${document.type}`) as HTMLInputElement;
     if (fileInput) {
       fileInput.click();
     }
   };
-  
+
   return (
-    <Card className={`overflow-hidden ${document.uploaded ? 'border-loan-blue border-2' : 'border-dashed'}`}>
-      <CardContent className="p-0">
+    <Card className="shadow-sm">
+      <CardContent className="p-4">
+        <div className="mb-2 flex justify-between items-center">
+          <h3 className="text-sm font-medium text-loan-darkBlue">{documentLabel}</h3>
+          
+          {document.uploaded && (
+            <button 
+              onClick={onDelete} 
+              className="text-gray-400 hover:text-red-500 transition-colors"
+              aria-label={`Delete ${documentLabel}`}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
         {!document.uploaded ? (
-          <div 
-            className="document-upload-area p-6 flex flex-col items-center justify-center h-64 cursor-pointer"
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e)}
-            onClick={triggerFileInput}
-          >
-            <div className="mb-4 bg-loan-lightGray p-3 rounded-full">
-              <Upload className="h-8 w-8 text-loan-blue" />
+          <>
+            <div 
+              onClick={handleDropAreaClick}
+              className="border-2 border-dashed border-gray-200 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+            >
+              <FilePlus2 className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+              <p className="text-sm text-gray-500 mb-2">Click to upload your {documentLabel}</p>
+              <p className="text-xs text-gray-400">PDF, JPG or PNG (max 5MB)</p>
             </div>
-            <h3 className="text-lg font-semibold text-loan-darkBlue mb-2">
-              {label}
-            </h3>
-            <p className="text-sm text-gray-500 text-center mb-4">
-              Drag and drop your {label} here, or click to browse files
-            </p>
-            <label htmlFor={`file-${type}`} className="cursor-pointer">
-              <Button variant="outline" className="border-loan-blue text-loan-blue">
-                Browse Files
-              </Button>
-              <input
-                id={`file-${type}`}
-                type="file"
-                className="hidden"
-                accept="image/jpeg,image/png,application/pdf"
-                onChange={(e) => onFileChange(type, e.target.files?.[0] || null)}
-              />
-            </label>
-          </div>
+            
+            <input 
+              id={`file-${document.type}`}
+              ref={fileInputRef}
+              type="file" 
+              accept=".pdf,.jpg,.jpeg,.png" 
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            
+            <Button 
+              onClick={handleUploadClick} 
+              variant="outline" 
+              className="w-full mt-2 text-loan-blue border-loan-blue hover:bg-loan-blue hover:text-white"
+            >
+              Upload {documentLabel}
+            </Button>
+          </>
         ) : (
-          <div className="relative h-64">
+          <div className="mt-2">
             {document.preview && (
-              <img 
-                src={document.preview} 
-                alt={label} 
-                className="w-full h-full object-cover"
-              />
-            )}
-            <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center text-white p-4">
-              <div className="mb-2">
-                {document.processing ? (
-                  <div className="animate-spin rounded-full h-8 w-8 border-4 border-t-loan-blue border-white"></div>
-                ) : document.processed ? (
-                  <div className="bg-green-500 rounded-full p-1">
-                    <Check className="h-6 w-6" />
-                  </div>
+              <div className="relative mb-2 rounded-md overflow-hidden">
+                {document.file?.type.includes('image') ? (
+                  <img 
+                    src={document.preview} 
+                    alt={documentLabel} 
+                    className="w-full h-32 object-cover"
+                  />
                 ) : (
-                  <FileText className="h-8 w-8" />
+                  <div className="w-full h-24 bg-gray-100 flex items-center justify-center">
+                    <FileText className="h-8 w-8 text-loan-blue" />
+                  </div>
                 )}
               </div>
-              <h3 className="text-lg font-semibold mb-1">{label}</h3>
-              <p className="text-sm mb-3 text-center">
-                {document.processing ? 'Processing...' : document.processed ? 'Processed successfully' : 'Uploaded successfully'}
-              </p>
-              
-              <div className="flex space-x-2">
-                {document.processed && document.analysisResult && (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button size="sm" variant="outline" className="bg-blue-500 hover:bg-blue-600 text-white border-0">
-                        <Eye className="h-4 w-4 mr-1" />
-                        View Analysis
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
-                      <DialogHeader>
-                        <DialogTitle>Document Analysis - {label}</DialogTitle>
-                      </DialogHeader>
-                      <div className="mt-4 max-h-[60vh] overflow-y-auto">
-                        <div className="whitespace-pre-line bg-gray-50 p-4 rounded-md text-sm">
-                          {document.analysisResult}
-                        </div>
-                        
-                        {document.eligibilityScore !== null && document.eligibilityScore !== undefined && (
-                          <div className="mt-4 border-t pt-4">
-                            <h4 className="font-semibold mb-2">Eligibility Assessment</h4>
-                            <div className="flex items-center mb-2">
-                              <span className="text-gray-700 mr-2">Score:</span>
-                              <span className="font-bold text-loan-blue">{document.eligibilityScore}/100</span>
-                            </div>
-                            <Progress value={document.eligibilityScore} className="h-2 mb-2" />
-                            <p className="text-sm text-gray-600">{document.eligibilityFeedback}</p>
-                          </div>
-                        )}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+            )}
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                {document.processing && (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 text-loan-blue animate-spin" />
+                    <span className="text-xs text-loan-blue">Processing...</span>
+                  </>
                 )}
                 
-                {!document.processing && !document.processed && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => onDeleteDocument(type)}
-                    className="bg-red-500 hover:bg-red-600"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Remove
-                  </Button>
+                {document.processed && !document.error && (
+                  <>
+                    <Check className="h-4 w-4 mr-2 text-green-500" />
+                    <span className="text-xs text-green-600">Verified</span>
+                  </>
+                )}
+                
+                {document.error && (
+                  <>
+                    <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />
+                    <span className="text-xs text-red-500">Error: {document.error}</span>
+                  </>
                 )}
               </div>
+              
+              <span className="text-xs text-gray-500">
+                {document.file?.name.length && document.file.name.length > 20 
+                  ? document.file.name.substring(0, 20) + '...' 
+                  : document.file?.name}
+              </span>
             </div>
           </div>
         )}

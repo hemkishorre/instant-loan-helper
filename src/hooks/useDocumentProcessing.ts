@@ -57,10 +57,7 @@ export function useDocumentProcessing() {
     
     // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Maximum file size is 5MB.",
-      });
+      toast.error("File too large. Maximum file size is 5MB.");
       return;
     }
     
