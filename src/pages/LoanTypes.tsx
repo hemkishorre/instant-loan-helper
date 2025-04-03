@@ -133,10 +133,20 @@ const LoanTypes: React.FC = () => {
           <section 
             ref={detailsRef}
             className="py-16 bg-white border-t border-gray-200"
+            id="loan-details"
           >
             <div className="container mx-auto px-4">
               <h2 className="text-2xl font-semibold text-loan-darkBlue mb-8">Loan Details</h2>
               <LoanDetails loan={selectedLoan} />
+              <div className="mt-6 text-center">
+                <Button 
+                  onClick={() => setSelectedLoan(null)} 
+                  variant="outline"
+                  className="text-gray-500"
+                >
+                  Back to all loans
+                </Button>
+              </div>
             </div>
           </section>
         )}
