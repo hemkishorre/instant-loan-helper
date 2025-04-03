@@ -3,16 +3,17 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoanType } from '@/types/loan';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
 
 interface LoanCardProps {
   loan: LoanType;
   onSelect: (loan: LoanType) => void;
+  isSelected?: boolean;
 }
 
-const LoanCard: React.FC<LoanCardProps> = ({ loan, onSelect }) => {
+const LoanCard: React.FC<LoanCardProps> = ({ loan, onSelect, isSelected = false }) => {
   return (
-    <Card className="h-full transition-all hover:shadow-md hover:border-loan-blue">
+    <Card className={`h-full transition-all hover:shadow-md ${isSelected ? 'border-loan-blue ring-2 ring-loan-blue/20' : 'hover:border-loan-blue'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-full bg-loan-lightGray">
@@ -40,9 +41,13 @@ const LoanCard: React.FC<LoanCardProps> = ({ loan, onSelect }) => {
       <CardFooter>
         <Button 
           onClick={() => onSelect(loan)} 
-          className="w-full bg-loan-blue hover:bg-loan-darkBlue"
+          className={`w-full ${isSelected ? 'bg-loan-darkBlue' : 'bg-loan-blue hover:bg-loan-darkBlue'}`}
         >
-          View Details
+          {isSelected ? (
+            <span className="flex items-center">
+              View Details <ArrowRight className="ml-2 h-4 w-4" />
+            </span>
+          ) : "View Details"}
         </Button>
       </CardFooter>
     </Card>
