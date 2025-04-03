@@ -10,6 +10,7 @@ import Signup from "./pages/Signup";
 import Eligibility from "./pages/Eligibility";
 import EligibilityResults from "./pages/EligibilityResults";
 import Dashboard from "./pages/Dashboard";
+import LoanTypes from "./pages/LoanTypes";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/eligibility" element={<Eligibility />} />
             <Route path="/eligibility-results" element={<EligibilityResults />} />
+            <Route path="/loan-types" element={<LoanTypes />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
