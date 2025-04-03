@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,8 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import ApprovedLoanDetails from '@/components/loans/ApprovedLoanDetails';
+import ActiveLoanDetails from '@/components/loans/ActiveLoanDetails';
 import { 
   CreditCard, 
   Calendar, 
@@ -19,7 +21,6 @@ import {
   BellRing 
 } from 'lucide-react';
 
-// Mock data
 interface LoanApplication {
   id: string;
   type: string;
@@ -27,6 +28,12 @@ interface LoanApplication {
   date: string;
   status: 'pending' | 'approved' | 'disbursed' | 'rejected';
   progress: number;
+  interestRate?: string;
+  tenure?: string;
+  emiAmount?: string;
+  bankDetails?: string;
+  expectedDisbursementDate?: string;
+  pendingActions?: string[];
 }
 
 interface LoanAccount {
@@ -39,6 +46,19 @@ interface LoanAccount {
   nextEmiAmount: string;
   totalEmis: number;
   paidEmis: number;
+  startDate: string;
+  endDate: string;
+  interestRate: string;
+  tenure: string;
+  paymentStatus: 'paid' | 'pending' | 'overdue';
+  totalInterestPaid: string;
+  totalAmountPaid: string;
+  emiPayments: Array<{
+    emiNo: number;
+    dueDate: string;
+    status: 'paid' | 'pending' | 'overdue';
+    amount: string;
+  }>;
 }
 
 interface Notification {
@@ -50,7 +70,6 @@ interface Notification {
 }
 
 const Dashboard = () => {
-  // Mock data for the dashboard
   const [loanApplications] = useState<LoanApplication[]>([
     {
       id: 'LA-001',
@@ -58,7 +77,13 @@ const Dashboard = () => {
       amount: '₹2,00,000',
       date: '12 Jun 2023',
       status: 'approved',
-      progress: 75
+      progress: 75,
+      interestRate: '10.5% p.a.',
+      tenure: '24 months',
+      emiAmount: '₹9,280',
+      bankDetails: '✱✱✱✱ 5678',
+      expectedDisbursementDate: '20 Jul 2023',
+      pendingActions: ['Verify your bank account details', 'Upload income proof']
     },
     {
       id: 'LA-002',
@@ -80,7 +105,21 @@ const Dashboard = () => {
       nextEmiDate: '10 Jul 2023',
       nextEmiAmount: '₹5,625',
       totalEmis: 36,
-      paidEmis: 3
+      paidEmis: 3,
+      startDate: '10 Apr 2023',
+      endDate: '10 Apr 2026',
+      interestRate: '10.5% p.a.',
+      tenure: '36 months',
+      paymentStatus: 'pending',
+      totalInterestPaid: '₹4,875',
+      totalAmountPaid: '₹30,000',
+      emiPayments: [
+        { emiNo: 1, dueDate: '10 May 2023', status: 'paid', amount: '₹5,625' },
+        { emiNo: 2, dueDate: '10 Jun 2023', status: 'paid', amount: '₹5,625' },
+        { emiNo: 3, dueDate: '10 Jul 2023', status: 'pending', amount: '₹5,625' },
+        { emiNo: 4, dueDate: '10 Aug 2023', status: 'pending', amount: '₹5,625' },
+        { emiNo: 5, dueDate: '10 Sep 2023', status: 'pending', amount: '₹5,625' }
+      ]
     }
   ]);
   
@@ -107,6 +146,10 @@ const Dashboard = () => {
       type: 'info'
     }
   ]);
+
+  const [selectedApprovedLoan, setSelectedApprovedLoan] = useState<LoanApplication | null>(null);
+  const [selectedActiveLoan, setSelectedActiveLoan] = useState<LoanAccount | null>(null);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   
   const getStatusBadge = (status: LoanApplication['status']) => {
     switch (status) {
@@ -134,6 +177,24 @@ const Dashboard = () => {
       default:
         return null;
     }
+  };
+
+  const handleViewApprovedLoanDetails = (loan: LoanApplication) => {
+    setSelectedApprovedLoan(loan);
+    setSelectedActiveLoan(null);
+    setShowDetailsDialog(true);
+  };
+
+  const handleViewActiveLoanDetails = (loan: LoanAccount) => {
+    setSelectedActiveLoan(loan);
+    setSelectedApprovedLoan(null);
+    setShowDetailsDialog(true);
+  };
+
+  const closeDetailsDialog = () => {
+    setShowDetailsDialog(false);
+    setSelectedApprovedLoan(null);
+    setSelectedActiveLoan(null);
   };
 
   return (
@@ -234,7 +295,11 @@ const Dashboard = () => {
                         </div>
                         
                         <div className="mt-6 flex justify-end">
-                          <Button variant="outline" className="border-loan-blue text-loan-blue hover:bg-loan-blue hover:text-white">
+                          <Button 
+                            variant="outline" 
+                            className="border-loan-blue text-loan-blue hover:bg-loan-blue hover:text-white"
+                            onClick={() => handleViewApprovedLoanDetails(application)}
+                          >
                             View Details
                           </Button>
                         </div>
@@ -308,7 +373,11 @@ const Dashboard = () => {
                         </div>
                         
                         <div className="mt-6 flex justify-end space-x-3">
-                          <Button variant="outline" className="border-loan-blue text-loan-blue hover:bg-loan-blue hover:text-white">
+                          <Button 
+                            variant="outline" 
+                            className="border-loan-blue text-loan-blue hover:bg-loan-blue hover:text-white"
+                            onClick={() => handleViewActiveLoanDetails(account)}
+                          >
                             View Details
                           </Button>
                           <Button className="bg-loan-green hover:bg-green-600">
@@ -380,6 +449,18 @@ const Dashboard = () => {
           </Tabs>
         </div>
       </div>
+      
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+          {selectedApprovedLoan && (
+            <ApprovedLoanDetails loan={selectedApprovedLoan} onClose={closeDetailsDialog} />
+          )}
+          
+          {selectedActiveLoan && (
+            <ActiveLoanDetails loan={selectedActiveLoan} onClose={closeDetailsDialog} />
+          )}
+        </DialogContent>
+      </Dialog>
       
       <Footer />
     </div>
