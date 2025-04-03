@@ -18,17 +18,19 @@ export interface Document {
 }
 
 interface DocumentUploaderProps {
+  type: 'aadhar' | 'pan' | 'salarySlip';
+  label: string;
   document: Document;
-  documentLabel: string;
-  onFileChange: (file: File | null) => void;
-  onDelete: () => void;
+  onFileChange: (type: string, file: File | null) => void;
+  onDeleteDocument: (type: string) => void;
 }
 
 const DocumentUploader: React.FC<DocumentUploaderProps> = ({
+  type,
+  label,
   document,
-  documentLabel,
   onFileChange,
-  onDelete
+  onDeleteDocument
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -40,7 +42,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    onFileChange(file);
+    onFileChange(type, file);
     
     // Reset the file input so the same file can be selected again if needed
     if (e.target.value) {
@@ -49,10 +51,9 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   };
 
   const handleDropAreaClick = () => {
-    // Find the file input element in the DOM
-    const fileInput = document.getElementById(`file-${document.type}`) as HTMLInputElement;
-    if (fileInput) {
-      fileInput.click();
+    // Instead of using document.getElementById, use the fileInputRef directly
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
@@ -60,13 +61,13 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
     <Card className="shadow-sm">
       <CardContent className="p-4">
         <div className="mb-2 flex justify-between items-center">
-          <h3 className="text-sm font-medium text-loan-darkBlue">{documentLabel}</h3>
+          <h3 className="text-sm font-medium text-loan-darkBlue">{label}</h3>
           
           {document.uploaded && (
             <button 
-              onClick={onDelete} 
+              onClick={() => onDeleteDocument(type)} 
               className="text-gray-400 hover:text-red-500 transition-colors"
-              aria-label={`Delete ${documentLabel}`}
+              aria-label={`Delete ${label}`}
             >
               <X className="h-4 w-4" />
             </button>
@@ -80,12 +81,12 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
               className="border-2 border-dashed border-gray-200 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
             >
               <FilePlus2 className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-              <p className="text-sm text-gray-500 mb-2">Click to upload your {documentLabel}</p>
+              <p className="text-sm text-gray-500 mb-2">Click to upload your {label}</p>
               <p className="text-xs text-gray-400">PDF, JPG or PNG (max 5MB)</p>
             </div>
             
             <input 
-              id={`file-${document.type}`}
+              id={`file-${type}`}
               ref={fileInputRef}
               type="file" 
               accept=".pdf,.jpg,.jpeg,.png" 
@@ -98,7 +99,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
               variant="outline" 
               className="w-full mt-2 text-loan-blue border-loan-blue hover:bg-loan-blue hover:text-white"
             >
-              Upload {documentLabel}
+              Upload {label}
             </Button>
           </>
         ) : (
@@ -108,7 +109,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                 {document.file?.type.includes('image') ? (
                   <img 
                     src={document.preview} 
-                    alt={documentLabel} 
+                    alt={label} 
                     className="w-full h-32 object-cover"
                   />
                 ) : (
