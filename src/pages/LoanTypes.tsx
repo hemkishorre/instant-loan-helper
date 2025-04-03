@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -10,18 +10,24 @@ import { LoanType } from '@/types/loan';
 
 const LoanTypes: React.FC = () => {
   const [selectedLoan, setSelectedLoan] = useState<LoanType | null>(null);
+  const detailsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   const handleSelectLoan = (loan: LoanType) => {
-    // Scroll to loan details section
     setSelectedLoan(loan);
-    setTimeout(() => {
-      const detailsSection = document.getElementById('loan-details-section');
-      if (detailsSection) {
-        detailsSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 100);
   };
+
+  // Scroll to loan details section when a loan is selected
+  useEffect(() => {
+    if (selectedLoan && detailsRef.current) {
+      setTimeout(() => {
+        detailsRef.current?.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }, 100);
+    }
+  }, [selectedLoan]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -59,7 +65,10 @@ const LoanTypes: React.FC = () => {
         
         {/* Loan Details Section */}
         {selectedLoan && (
-          <section id="loan-details-section" className="py-16 bg-white">
+          <section 
+            ref={detailsRef}
+            className="py-16 bg-white border-t border-gray-200"
+          >
             <div className="container mx-auto px-4">
               <h2 className="text-2xl font-semibold text-loan-darkBlue mb-8">Loan Details</h2>
               <LoanDetails loan={selectedLoan} />

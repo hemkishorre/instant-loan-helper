@@ -42,7 +42,7 @@ const LoanCard: React.FC<LoanCardProps> = ({ loan, onSelect }) => {
           onClick={() => onSelect(loan)} 
           className="w-full bg-loan-blue hover:bg-loan-darkBlue"
         >
-          Apply Now
+          View Details
         </Button>
       </CardFooter>
     </Card>
