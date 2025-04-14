@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoanType } from '@/types/loan';
-import { Banknote, Calendar, CheckCircle2, Clock, FileText, CreditCard, Info, Percent } from 'lucide-react';
+import { Banknote, Calendar, CheckCircle2, Clock, FileText, CreditCard, Info, Percent, Users, Target } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -60,6 +60,15 @@ const LoanDetails: React.FC<LoanDetailsProps> = ({ loan }) => {
         </div>
         <div className="mt-4 bg-loan-lightBlue/20 p-4 rounded-lg">
           <p className="text-gray-700">{loan.description}</p>
+          
+          {loan.idealFor && (
+            <div className="mt-3 flex items-center gap-2">
+              <Users className="h-4 w-4 text-loan-blue" />
+              <p className="text-sm font-medium text-loan-darkBlue">
+                <span className="text-loan-blue">Ideal For:</span> {loan.idealFor}
+              </p>
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -90,6 +99,24 @@ const LoanDetails: React.FC<LoanDetailsProps> = ({ loan }) => {
           </div>
         </div>
 
+        {/* Key Features Section */}
+        {loan.keyFeatures && (
+          <div className="border rounded-md p-4">
+            <h3 className="text-lg font-medium mb-3 text-loan-darkBlue flex items-center gap-2">
+              <Target className="h-5 w-5 text-loan-blue" />
+              <span>Key Features</span>
+            </h3>
+            <ul className="space-y-2">
+              {loan.keyFeatures.map((feature, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-loan-green mt-1" />
+                  <span className="text-gray-700">{feature}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Detailed Tabs */}
         <Tabs defaultValue="eligibility" className="w-full">
           <TabsList className="grid grid-cols-2 md:grid-cols-4 mb-4">
@@ -111,7 +138,7 @@ const LoanDetails: React.FC<LoanDetailsProps> = ({ loan }) => {
                   <CheckCircle2 className="h-4 w-4 text-loan-green mt-1" />
                   <div>
                     <span className="text-gray-700">{criteria}</span>
-                    {index === 0 && criteria.includes('Minimum age') && (
+                    {criteria.includes('Age:') && (
                       <Badge variant="outline" className="ml-2 bg-loan-lightBlue text-loan-blue">Age Requirement</Badge>
                     )}
                     {criteria.includes('income') && (

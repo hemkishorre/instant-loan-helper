@@ -65,23 +65,28 @@ const Footer = () => {
             <h3 className="text-lg font-semibold mb-4">Loan Types</h3>
             <ul className="space-y-3">
               <li>
-                <Link to="/loan-types#personal" className="text-loan-gray hover:text-loan-blue transition-colors">
+                <Link to="/loan-types" className="text-loan-gray hover:text-loan-blue transition-colors">
                   Personal Loan
                 </Link>
               </li>
               <li>
-                <Link to="/loan-types#home" className="text-loan-gray hover:text-loan-blue transition-colors">
+                <Link to="/loan-types" className="text-loan-gray hover:text-loan-blue transition-colors">
                   Home Loan
                 </Link>
               </li>
               <li>
-                <Link to="/loan-types#business" className="text-loan-gray hover:text-loan-blue transition-colors">
+                <Link to="/loan-types" className="text-loan-gray hover:text-loan-blue transition-colors">
                   Business Loan
                 </Link>
               </li>
               <li>
-                <Link to="/loan-types#education" className="text-loan-gray hover:text-loan-blue transition-colors">
+                <Link to="/loan-types" className="text-loan-gray hover:text-loan-blue transition-colors">
                   Education Loan
+                </Link>
+              </li>
+              <li>
+                <Link to="/loan-types" className="text-loan-gray hover:text-loan-blue transition-colors">
+                  Vehicle Loan
                 </Link>
               </li>
             </ul>

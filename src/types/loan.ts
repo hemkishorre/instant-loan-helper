@@ -14,4 +14,6 @@ export interface LoanType {
   requiredDocuments: string[];
   repaymentTerms: string[];
   processingTime: string;
+  keyFeatures?: string[];
+  idealFor?: string;
 }

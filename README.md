@@ -1,7 +1,40 @@
+
 # Welcome to your instant loan project
 
 ## Project info
+This is a web application for instant loan applications. The project allows users to browse various loan types, check eligibility, apply for loans, and track their loan status.
 
+## Available Loan Types
+
+### 1. Personal Loan
+- **Purpose:** For general personal financial needs
+- **Amount Range:** ₹50,000 - ₹5,00,000
+- **Interest Rate:** 10.5% p.a.
+- **Tenure:** 6 months to 5 years
+
+### 2. Home Loan
+- **Purpose:** To finance property purchase or construction
+- **Amount Range:** ₹1,00,000 - ₹25,00,000
+- **Interest Rate:** 8.5% p.a.
+- **Tenure:** 5 to 20 years
+
+### 3. Business Loan
+- **Purpose:** For business expansion or operational costs
+- **Amount Range:** ₹1,00,000 - ₹15,00,000
+- **Interest Rate:** 12% p.a.
+- **Tenure:** 1 to 7 years
+
+### 4. Education Loan
+- **Purpose:** To finance higher education
+- **Amount Range:** ₹50,000 - ₹10,00,000
+- **Interest Rate:** 9% p.a.
+- **Tenure:** Up to 10 years
+
+### 5. Vehicle Loan
+- **Purpose:** To purchase vehicles
+- **Amount Range:** ₹50,000 - ₹10,00,000
+- **Interest Rate:** 9.5% p.a.
+- **Tenure:** 1 to 7 years
 
 ## How can I edit this code?
 
@@ -49,7 +82,7 @@ npm run dev
 
 ## What technologies are used for this project?
 
-This project is built with .
+This project is built with:
 
 - Vite
 - TypeScript
